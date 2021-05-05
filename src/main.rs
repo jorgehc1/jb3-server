@@ -19,13 +19,6 @@ use data::DataInterface;
 use socket::Server;
 use socket::ServerInterface;
 
-/*
-mod data;
-
-use std::mem;
-use data::Configuration;
-*/
-
 fn main() -> io::Result<()> {
     env_logger::init();
     debug!("Starting JB3 Database Server...");
@@ -36,21 +29,18 @@ fn main() -> io::Result<()> {
     if let "start" = &*cmd {
         let data = Data::read_config_file("config.ini".to_string());
         match data {
-            Ok(config) => {
-                println!("OK server {:?}", config)
+            Ok(sc) => {
+                let server = Server::connect(sc);
+                match server {
+                    Ok(v) => println!("OK server {:?}", v),
+                    Err(e) => panic!("Error server: {:?}", e),
+                };
+                //println!("OK server {:?}", config)
             }
             Err(e) => { 
                 panic!("Error: {:?}", e)
             }
         };
-
-        /*
-        let server = Server::connect();
-        match server {
-            Ok(v) => println!("OK server {:?}", v),
-            Err(e) => panic!("Error server: {:?}", e),
-        };*/
-
     }else if let "stop" = &*cmd {
         println!("stop");
     }else if let "reload" = &*cmd {

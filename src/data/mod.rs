@@ -1,34 +1,25 @@
 extern crate ini;
+extern crate nucleo;
 
+use std::io::{Error, ErrorKind};
 use std::path::Path;
 use std::ffi::OsStr;
-use std::io::{Error, Read, ErrorKind};
 use ini::Ini;
 use regex::Regex;
+use nucleo::config::ServerConfig;
 
 //interface
 pub trait DataInterface {
     fn is_valid_host(host: String) -> bool;
     fn is_valid_port(port: String) -> bool;
     fn is_valid_data_dir(data_dir: String) -> bool;
+    fn is_valid_master_file(data_dir: String, file: String) -> bool;
     fn read_config_file(name: String) -> Result<ServerConfig, Error>;
     fn read_data_core()-> bool;
 }
 
 //constructor
 pub struct Data();
-
-#[derive(Debug)]
-pub struct ServerConfig{
-    host: String,
-    port: u32,
-    ttl: u32,
-    buffer_size: u32,
-    timeout_read: u32,
-    timeout_write: u32,
-    encoding: String,
-    data_dir: String
-}
 
 impl DataInterface for Data {
 
@@ -47,10 +38,15 @@ impl DataInterface for Data {
         Path::new(&data_dir).is_dir()
     }
 
+    fn is_valid_master_file(data_dir: String, file: String) -> bool {
+        let ruta = format!("{}/{}", data_dir, file);
+        Path::new(&ruta).exists()
+    }
+
     fn read_config_file(name: String) -> Result<ServerConfig, Error> {
         let c = Path::new(&name);
         let is_file = c.is_file();
-        let sc;
+
         if is_file == true {
             let config = Ini::load_from_file(name).unwrap();
 
@@ -65,6 +61,7 @@ impl DataInterface for Data {
             let section2 = config.section(Some("engine")).unwrap();
             let encoding = section2.get("encoding").unwrap();
             let data_dir = section2.get("data_dir").unwrap();
+            let master_file = String::from("core.bin");
 
             if Self::is_valid_host(host.to_string()) == false {
                 return Err(Error::new(ErrorKind::Other, format!("host param: \'{}\' is invalid.", host.to_string())));
@@ -78,7 +75,11 @@ impl DataInterface for Data {
                 return Err(Error::new(ErrorKind::Other, format!("data_dir param: \'{}\' is invalid or directory doesn't exists", data_dir.to_string())));
             }
 
-            sc = ServerConfig{
+            if Self::is_valid_master_file(data_dir.to_string(), master_file.to_string()) == false {
+                return Err(Error::new(ErrorKind::Other, format!("master file \'{}\' is invalid or doesn't exists", master_file.to_string())));
+            }
+
+            let sc = ServerConfig{
                 host: String::from(host),
                 port: port.parse::<u32>().unwrap(),
                 ttl: ttl.parse::<u32>().unwrap(),
@@ -88,18 +89,19 @@ impl DataInterface for Data {
                 encoding: String::from(encoding), 
                 data_dir: String::from(data_dir)
             };
+
+            return Ok(sc);
         }else{
             return Err(Error::new(ErrorKind::Other, "Can't opening file config.ini..."));
         }
-        Ok(sc)
     }
 
     fn read_data_core() -> bool{
         let config = Self::read_config_file("config.ini".to_string());
         match config {
-            Ok(sc) => {
-                let encoding = sc.encoding;
-                let data_dir = sc.data_dir;
+            Ok(_sc) => {
+                //let encoding = sc.encoding;
+                //let data_dir = sc.data_dir;
 
                 //println!("OK server {:?}", sc)
             }
